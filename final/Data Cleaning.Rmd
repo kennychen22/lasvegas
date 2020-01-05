@@ -1,0 +1,142 @@
+---
+title: "Reading Files"
+author: "Jessica and Kenny"
+date: "12/2/2019"
+output: html_document
+---
+
+```{r setup, include = F}
+library(mdsr)
+library(rjson)
+library(jsonlite)
+library(fuzzyjoin)
+library(tidyverse)
+library(lubridate)
+library(dplyr)
+library(stringdist)
+library(reprex)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r read in files, cache = T}
+allBusinesses <- stream_in(file("business.json")) 
+allReviews <- stream_in(file("review.json"))
+#these two files can be downloaded from the https://www.yelp.com/dataset/challenge
+#business is about 131 mb
+#reviews is about 5 gb
+allInspections <- read_csv("Restaurant_Inspections_Open_Data.csv")
+#this file (3.3mb) can be downloaded from https://opendataportal-lasvegas.opendata.arcgis.com/datasets/restaurant-inspections-open-data
+# we downloaded ours on Nov 26 but it upates quite frequently 
+```
+
+```{r filtering, cache = T}
+# get restaurants 
+index <- grep("Restaurants", allBusinesses$categories)
+allRestaurants <- allBusinesses[index,]
+# get las vegas
+vegasRestaurants <- allRestaurants %>%
+  filter(city == "Las Vegas") 
+#write a file of just vegas restaurants
+saveRDS(vegasRestaurants,"VegasRestaurants.Rds")
+
+```
+
+```{r cleaning}
+#cleaning vegas restaurants
+cleanVegasRestaurants <- vegasRestaurants %>%
+  filter(is_open == 1) %>%
+  mutate(name = tolower(name),
+         name = gsub("[&\\+]","and", name),
+         name = gsub("[,-\\/]"," ", name),
+         name = gsub("['\\.\\(\\)\\|]","", name), 
+         address = tolower(address),
+         address = gsub("[,\\.]","",address)) %>%
+  select(-attributes, -hours) #removing it because it is a dataframe within a list
+#cleaning vegas inspections
+
+cleanInspections <- allInspections %>%
+  mutate(Restaurant_Name = tolower(Restaurant_Name),
+         Restaurant_Name = gsub("[&\\+]","and",Restaurant_Name),
+         Restaurant_Name = gsub("[,-\\/]"," ", Restaurant_Name),
+         Restaurant_Name = gsub("['\\.\\(\\)]", "", Restaurant_Name),
+         Restaurant_Name = gsub("@","at", Restaurant_Name),
+         Address = tolower(Address),
+         Address = gsub("-"," ", Address)) %>%
+  separate(Location_1, c("iLatitude","iLongitude"), sep=",") %>%
+  mutate(iLatitude = as.numeric(gsub("\\(","", iLatitude)),
+         iLongitude = as.numeric(gsub("\\)","", iLongitude)),
+         iLongitude = if(iLongitude > 0){ iLongitude*(-1)}) 
+
+# getting the most recent inspections
+currentInspections <- cleanInspections %>%
+  group_by(Restaurant_Name, Address) %>%
+  arrange(desc(Inspection_Time)) %>%
+  top_n(1) 
+  
+```
+
+
+```{r matching functions}
+#checks if the string distance between two names is <5
+match_fun_stringdist <- function(v1, v2) {
+  dists <- stringdist(v1, v2, method = "osa")
+  ret <- dplyr::data_frame(include = (dists <= 5))
+  ret[["distance_col"]] <- dists
+  ret
+}
+# checks if the coordinate difference is <0.00005
+match_location <- function(l1,l2) {
+   diff <- abs(l1 - l2) 
+  ret <- dplyr::data_frame(include = (diff < 0.0005))
+  ret[["diff"]] <- diff
+  ret
+}
+```
+
+
+```{r joing restaurants with insepctions, cache = T}
+#using fuzzyjoin to match restaurants with inspections 
+matches <- fuzzy_inner_join(cleanVegasRestaurants, currentInspections,
+                by = list(x = c("name", 
+                                "address",
+                                "latitude", 
+                                "longitude"), 
+                          y = c("Restaurant_Name",
+                                "Address",
+                                "iLatitude",
+                                "iLongitude")), 
+                match_fun = list(match_fun_stringdist, 
+                                 match_fun_stringdist, 
+                                 match_location, 
+                                 match_location))
+
+# csv file of businesses along with inspections 
+write.csv(matches, "matches.csv")
+
+
+#at this point we manually took the matches and selected the wrong ones (8 were wrong out of 475)
+
+cleanedMatches <- read_csv("cleanedMatches.csv")
+
+
+```
+
+
+```{r}
+#match reviews to the business idea of restaurants
+matches_reviews <- cleanedMatches %>%
+  left_join(allReviews, by = "business_id")
+
+
+
+#getting back the original names and address
+matches_reviews_cleaned <- matches_reviews %>%
+  left_join(vegasRestaurants, by = "business_id") %>%
+  select(-attributes, -hours) #removed these because each observation was a dataframe and it messed up our code
+# so we saved as RDS
+saveRDS(matches_reviews_cleaned, "matches_reviews_fixed.Rds")
+
+```
+
+
+

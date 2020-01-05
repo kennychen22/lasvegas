@@ -1,0 +1,105 @@
+---
+title: "sentiment analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(fuzzyjoin)
+library(tidyverse)
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen = 999)
+```
+
+```{r}
+#read in file 
+sentiment <- readRDS("matches_reviews_fixed.Rds")
+sentiment
+```
+
+```{r sentiment packages, cache = T}
+#get bing sentiment
+library(tidytext) 
+bing <- get_sentiments("bing")
+```
+
+```{r}
+#collapse all reviews of one restaurant into one observation 
+sentimentsCollapsed <- sentiment%>%
+select(business_id,text)%>%
+group_by(business_id)%>%
+summarize(text=paste(text,collapse=" // "))
+
+sentimentsCollapsedExcerpt <- sentimentsCollapsed %>%
+  head(1)
+
+sentimentsCollapsedExcerpt
+```
+
+
+```{r}
+#finds top three negative and top three positive words
+goodBad <- function(text) {
+words <- tibble(text) %>%
+  unnest_tokens(word, text)
+positive <- words %>%
+  count(word, sort = T) %>%
+  inner_join(bing) %>%
+  filter(sentiment == "positive") %>%
+  head(3)
+negative <- words %>%
+  count(word, sort = T) %>%
+  inner_join(bing) %>%
+  filter(sentiment == "negative") %>%
+  head(3)
+c <- rbind(positive, negative)
+c
+}
+```
+
+
+```{r}
+#running on one restaurant to test
+goodBad(sentimentsCollapsedExcerpt$text))
+```
+
+
+```{r}
+#using `wordcloud` package to create wordclouds of the restaurant's reviews
+library(wordcloud)
+wordcloud(sentimentsCollapsedExcerpt$text, max.words = 30, scale = c(10, .1),
+colors = topo.colors(n = 30), random.color = TRUE)
+```
+
+
+#looking at chengdu restaurant
+```{r}
+#filtering for chengdu only
+chengdu <- sentiment %>%
+  filter(name.x == "chengdu taste")
+#finding top3 words
+chengduWords <- goodBad(chengdu$text)
+
+#making a bar garph
+ggplot(chengduWords, aes(x = reorder(word, n), y = n, fill = sentiment)) + geom_bar(stat = "identity") + coord_flip() + xlab("Positive and Negative Words") + ylab("Count") + ggtitle("Top 3 Positive and Top 3 Negative Words")
+#making a wordcloud 
+wordcloud(chengdu$text, max.words = 30, scale = c(10, .1),
+colors = topo.colors(n = 30), random.color = TRUE)
+
+```
+COMMENTS: We see that for Cheng Du Taste which has a grade of C, its top three positive words have more counts than its top three negative words. In it's word cloud, its hard to see any words that relate to its cleanliness.
+
+
+
+# looking at some univariate / multivariate data
+```{r, warning = F}
+#more overall observations
+ggplot(sentiment, aes(x = stars, fill = Inspection_Grade)) + geom_bar() + xlab("Yelp Rating") + ylab("Count of Pos and Neg Words") + ggtitle("Distribution of Yelp Ratings, filled by Inspection Grade")
+
+
+ggplot(sentiment, aes(x = stars, y = Inspection_Demerits)) + geom_point() + geom_smooth(method = "lm") + xlab("Yelp Rating") + ylab("Inspection Demerits") + ggtitle("Inspection Demerits versus Yelp Rating")
+
+
+```
+
+COMMENTS: most ratings are around 3-4, lots of A grades, there does not seem to be a strong negative correlation between inspection demerits and yelp rating.
+
