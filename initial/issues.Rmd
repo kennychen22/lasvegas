@@ -1,0 +1,19 @@
+---
+title: "Issues"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Issues
+
+As of right now we are trying to predict the sanitation grade and success of restaurants by doing sentiment analysis on yelp reviews
+
+Link to download the yelp dataset (this is the dataset that we can't read into R at the moment)
+
+https://www.yelp.com/dataset/download
+
+
+

@@ -1,0 +1,51 @@
+---
+title: "STAT231 Group XX Initial Project Proposal"
+author: "Jessica Yu and Kenny Chen"
+date: "October 18, 2019"
+output: 
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+    toc: true
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r, setup, include=FALSE}
+require(mdsr)   # Load additional packages here 
+knitr::opts_chunk$set(
+  tidy=FALSE,     # display code as typed
+  size="small")   # slightly smaller font for code
+```
+
+## Group Letter: C
+
+## Group Members:
+Jessica Yu and Kenny Chen
+
+## Title:
+Is religious adherence a good indication of vaccine preventable diseases outbreak? 
+
+## Purpose:
+We are interested to see if areas with high religious adherence rate and political ideologies influence the vaccinations of kids. 
+
+## Data:
+We will be using the 2010 US Religion Census Data tht gives a break down of different religious groups by county.
+
+We will also be using the US Department of Health and Contagious Diseases data set which contains weekly reports of vaccine preventable disease outbreaks in US cities and states from 1888 to 2013.
+
+
+
+## Variables:
+Religions 
+Religious Adherence Rate 
+County
+Diseases
+Population 
+
+## End Product:
+See if there is any association between religious adherence rate and vaccine preventable disease outbreaks. Also be able to predict future vaccine prventable disease outbreaks and allocate resources to address those issues. 
