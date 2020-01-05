@@ -1,8 +1,0 @@
-We had what I thought was a productive discussion regarding your project.  
-Might you be willing to share an excerpt of the Yelp data along with the 
-codebook?  
-
-It would be helpful if at some point you were able to put together a revised 
-initial proposal before the revised proposal deadline (but this is not a requirement).
-I've reopened this issue and would be glad to work back and forth with you through
-the issue.
